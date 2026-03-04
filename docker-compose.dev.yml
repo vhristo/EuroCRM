@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: eurocrm-app-dev
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-changeme}@mongo:27017/eurocrm?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_min_32_characters_long}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_min_32_chars_long}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-EuroCRM}
+      WATCHPACK_POLLING: 'true'
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - eurocrm-dev-network
+
+  mongo:
+    image: mongo:7
+    container_name: eurocrm-mongo-dev
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-changeme}
+      MONGO_INITDB_DATABASE: eurocrm
+    volumes:
+      - mongo_dev_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', 'db.adminCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - eurocrm-dev-network
+
+networks:
+  eurocrm-dev-network:
+    driver: bridge
+
+volumes:
+  mongo_dev_data:
+    driver: local

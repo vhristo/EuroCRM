@@ -1,0 +1,26 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat
+
+# Install pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy manifests first for better layer caching
+COPY package.json pnpm-lock.yaml ./
+
+RUN pnpm install
+
+# Copy source — volumes will override this at runtime in docker-compose.dev.yml,
+# but having a copy here lets the image build standalone if needed.
+COPY . .
+
+EXPOSE 3000
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+CMD ["pnpm", "dev"]
