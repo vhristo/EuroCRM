@@ -1,18 +1,13 @@
 'use client'
 
-import { use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Box, Button, CircularProgress, Typography } from '@mui/material'
 import { ArrowBack } from '@mui/icons-material'
 import { useGetContactQuery } from '@/store/api/contactsApi'
 import { ContactDetail } from '@/components/contacts/ContactDetail'
 
-interface ContactPageProps {
-  params: Promise<{ id: string }>
-}
-
-export default function ContactPage({ params }: ContactPageProps) {
-  const { id } = use(params)
+export default function ContactPage() {
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
   const { data: contact, isLoading, isError } = useGetContactQuery(id)

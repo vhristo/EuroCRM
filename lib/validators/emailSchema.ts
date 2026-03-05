@@ -21,7 +21,7 @@ export const EmailConfigSchema = z.object({
     .default(587),
   secure: z.boolean().default(false),
   username: z.string().min(1, 'SMTP username is required').trim(),
-  password: z.string().min(1, 'SMTP password is required'),
+  password: z.string().optional().default(''),
   fromName: z.string().min(1, 'From name is required').trim(),
   fromEmail: z
     .string()

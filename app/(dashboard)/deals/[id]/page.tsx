@@ -1,18 +1,13 @@
 'use client'
 
-import { use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Box, Button, CircularProgress, Alert, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { useGetDealQuery } from '@/store/api/dealsApi'
 import DealDetail from '@/components/deals/DealDetail'
 
-interface DealPageProps {
-  params: Promise<{ id: string }>
-}
-
-export default function DealPage({ params }: DealPageProps) {
-  const { id } = use(params)
+export default function DealPage() {
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
   const { data: deal, isLoading, isError } = useGetDealQuery(id)

@@ -89,8 +89,7 @@ export default function EmailConfigForm() {
       port: values.port,
       secure: values.secure,
       username: values.username,
-      // Only send password if provided (non-empty string)
-      password: values.password && values.password.length > 0 ? values.password : (config?.password ?? ''),
+      password: values.password ?? '',
       fromName: values.fromName,
       fromEmail: values.fromEmail,
     })
@@ -174,7 +173,11 @@ export default function EmailConfigForm() {
               control={
                 <Switch
                   checked={secure}
-                  onChange={(e) => setValue('secure', e.target.checked)}
+                  onChange={(e) => {
+                    const isSecure = e.target.checked
+                    setValue('secure', isSecure)
+                    setValue('port', isSecure ? 465 : 587)
+                  }}
                 />
               }
               label="Use SSL/TLS (port 465)"

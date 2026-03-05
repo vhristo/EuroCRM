@@ -18,7 +18,7 @@ const AUTH_TAG_LENGTH = 16
  * Returns a colon-separated string: iv:authTag:encrypted (all hex-encoded).
  */
 export function encrypt(text: string): string {
-  const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf8')
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest()
   const iv = crypto.randomBytes(IV_LENGTH)
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
 
@@ -39,7 +39,7 @@ export function decrypt(encryptedText: string): string {
   }
 
   const [ivHex, authTagHex, encryptedHex] = parts
-  const key = Buffer.from(ENCRYPTION_KEY.slice(0, 32), 'utf8')
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest()
   const iv = Buffer.from(ivHex, 'hex')
   const authTag = Buffer.from(authTagHex, 'hex')
   const encryptedBuffer = Buffer.from(encryptedHex, 'hex')

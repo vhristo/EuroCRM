@@ -1,7 +1,7 @@
 'use client'
 
-import { use, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import {
   Alert,
   Box,
@@ -22,12 +22,8 @@ import type { CreateWorkflowInput } from '@/lib/validators/workflowSchema'
 import WorkflowForm from '@/components/workflows/WorkflowForm'
 import ExecutionLog from '@/components/workflows/ExecutionLog'
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
-
-export default function WorkflowDetailPage({ params }: PageProps) {
-  const { id } = use(params)
+export default function WorkflowDetailPage() {
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState(0)
   const [formError, setFormError] = useState<string | undefined>()

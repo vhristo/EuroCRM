@@ -62,20 +62,24 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   const orgId = new mongoose.Types.ObjectId(auth.organizationId)
   const { host, port, secure, username, password, fromName, fromEmail } = parsed.data
 
-  const encryptedPassword = encrypt(password)
+  const updateFields: Record<string, unknown> = {
+    host,
+    port,
+    secure,
+    username,
+    fromName,
+    fromEmail,
+  }
+
+  // Only update password if a non-empty value was provided
+  if (password && password.length > 0) {
+    updateFields.encryptedPassword = encrypt(password)
+  }
 
   const doc = await EmailConfig.findOneAndUpdate(
     { organizationId: orgId },
     {
-      $set: {
-        host,
-        port,
-        secure,
-        username,
-        encryptedPassword,
-        fromName,
-        fromEmail,
-      },
+      $set: updateFields,
     },
     { upsert: true, new: true }
   ).lean<Record<string, unknown>>()

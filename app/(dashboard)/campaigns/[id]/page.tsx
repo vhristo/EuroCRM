@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import {
   Alert,
   Box,
@@ -73,12 +72,8 @@ const RECIPIENT_STATUS_COLOR: Record<
   failed: 'error',
 }
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
-
-export default function CampaignDetailPage({ params }: PageProps) {
-  const { id } = use(params)
+export default function CampaignDetailPage() {
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const dispatch = useAppDispatch()
 
