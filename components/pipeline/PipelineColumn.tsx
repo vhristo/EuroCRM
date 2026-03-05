@@ -28,7 +28,7 @@ export default function PipelineColumn({
     <Paper
       elevation={0}
       sx={{
-        width: 260,
+        width: { xs: 240, sm: 260 },
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',

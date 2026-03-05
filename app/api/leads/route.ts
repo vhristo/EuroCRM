@@ -4,6 +4,7 @@ import { requireAuth, unauthorizedResponse } from '@/lib/auth'
 import { CreateLeadSchema } from '@/lib/validators/leadSchema'
 import Lead from '@/models/Lead'
 import { PAGINATION } from '@/utils/constants'
+import { evaluateWorkflows } from '@/lib/workflows/engine'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req)
@@ -54,5 +55,13 @@ export async function POST(req: NextRequest) {
     ownerId: auth.userId,
   })
 
-  return NextResponse.json(lead.toObject(), { status: 201 })
+  const serializedLead = lead.toObject() as Record<string, unknown>
+
+  // Fire-and-forget
+  evaluateWorkflows(auth.organizationId, 'lead_created', {
+    ...serializedLead,
+    id: String(serializedLead._id),
+  }).catch(console.error)
+
+  return NextResponse.json(serializedLead, { status: 201 })
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import { requireAuth, unauthorizedResponse } from '@/lib/auth'
 import Activity from '@/models/Activity'
+import { evaluateWorkflows } from '@/lib/workflows/engine'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -35,6 +36,15 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     },
     { new: true }
   ).lean()
+
+  // Fire-and-forget: trigger workflow only when activity is marked done (not undone)
+  if (newDone && updated) {
+    const activityEntity = updated as Record<string, unknown>
+    evaluateWorkflows(auth.organizationId, 'activity_completed', {
+      ...activityEntity,
+      id: String(activityEntity._id),
+    }).catch(console.error)
+  }
 
   return NextResponse.json(updated)
 }

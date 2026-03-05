@@ -21,6 +21,14 @@ type Permission =
   | 'settings:write'
   | 'users:read'
   | 'users:write'
+  | 'workflows:read'
+  | 'workflows:write'
+  | 'gdpr:export'
+  | 'gdpr:erasure'
+  | 'api_keys:read'
+  | 'api_keys:write'
+  | 'webhooks:read'
+  | 'webhooks:write'
 
 const rolePermissions: Record<string, Permission[]> = {
   admin: [
@@ -32,6 +40,10 @@ const rolePermissions: Record<string, Permission[]> = {
     'pipeline:read', 'pipeline:write',
     'settings:read', 'settings:write',
     'users:read', 'users:write',
+    'workflows:read', 'workflows:write',
+    'gdpr:export', 'gdpr:erasure',
+    'api_keys:read', 'api_keys:write',
+    'webhooks:read', 'webhooks:write',
   ],
   manager: [
     'contacts:read', 'contacts:write', 'contacts:delete',
@@ -42,6 +54,10 @@ const rolePermissions: Record<string, Permission[]> = {
     'pipeline:read', 'pipeline:write',
     'settings:read',
     'users:read',
+    'workflows:read', 'workflows:write',
+    'gdpr:export',
+    'api_keys:read',
+    'webhooks:read',
   ],
   sales_rep: [
     'contacts:read', 'contacts:write',
@@ -50,6 +66,7 @@ const rolePermissions: Record<string, Permission[]> = {
     'activities:read', 'activities:write',
     'reports:read',
     'pipeline:read',
+    'workflows:read',
   ],
 }
 

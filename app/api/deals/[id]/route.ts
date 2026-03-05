@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import Deal from '@/models/Deal'
 import { UpdateDealSchema } from '@/lib/validators/dealSchema'
+import { evaluateWorkflows } from '@/lib/workflows/engine'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -83,7 +84,16 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
   }
 
-  return NextResponse.json(serializeDeal(updated as Record<string, unknown>))
+  const serializedDeal = serializeDeal(updated as Record<string, unknown>)
+
+  // Fire-and-forget workflow triggers based on new status
+  if (parsed.data.status === 'won') {
+    evaluateWorkflows(auth.organizationId, 'deal_won', serializedDeal).catch(console.error)
+  } else if (parsed.data.status === 'lost') {
+    evaluateWorkflows(auth.organizationId, 'deal_lost', serializedDeal).catch(console.error)
+  }
+
+  return NextResponse.json(serializedDeal)
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {

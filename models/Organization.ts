@@ -1,4 +1,41 @@
 import mongoose, { Schema, Document } from 'mongoose'
+import type { CustomFieldType, CustomFieldEntityType } from '@/types/customField'
+
+// ─── Custom Field Definition (stored inside Organization) ────────────────────
+
+export interface ICustomFieldDefinitionDoc {
+  id: string
+  name: string
+  label: string
+  type: CustomFieldType
+  entityType: CustomFieldEntityType
+  required: boolean
+  options: string[]
+  order: number
+}
+
+const CustomFieldDefinitionSchema = new Schema<ICustomFieldDefinitionDoc>(
+  {
+    name: { type: String, required: true, trim: true },
+    label: { type: String, required: true, trim: true },
+    type: {
+      type: String,
+      enum: ['text', 'number', 'date', 'select', 'multiselect', 'checkbox', 'url', 'email', 'phone'],
+      required: true,
+    },
+    entityType: {
+      type: String,
+      enum: ['contacts', 'deals', 'leads'],
+      required: true,
+    },
+    required: { type: Boolean, default: false },
+    options: { type: [String], default: [] },
+    order: { type: Number, default: 0 },
+  },
+  { _id: true }
+)
+
+// ─── Organization ────────────────────────────────────────────────────────────
 
 export interface IOrganization {
   id: string
@@ -8,11 +45,18 @@ export interface IOrganization {
     defaultCurrency: string
     timezone: string
   }
+  customFields: {
+    contacts: ICustomFieldDefinitionDoc[]
+    deals: ICustomFieldDefinitionDoc[]
+    leads: ICustomFieldDefinitionDoc[]
+  }
   createdAt: string
   updatedAt: string
 }
 
-export interface IOrganizationDocument extends Omit<IOrganization, 'id' | 'createdAt' | 'updatedAt'>, Document {}
+export interface IOrganizationDocument
+  extends Omit<IOrganization, 'id' | 'createdAt' | 'updatedAt'>,
+    Document {}
 
 const organizationSchema = new Schema<IOrganizationDocument>(
   {
@@ -35,6 +79,11 @@ const organizationSchema = new Schema<IOrganizationDocument>(
         type: String,
         default: 'Europe/Berlin',
       },
+    },
+    customFields: {
+      contacts: { type: [CustomFieldDefinitionSchema], default: [] },
+      deals: { type: [CustomFieldDefinitionSchema], default: [] },
+      leads: { type: [CustomFieldDefinitionSchema], default: [] },
     },
   },
   {

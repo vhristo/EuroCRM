@@ -11,6 +11,7 @@ export interface ILead {
   status: 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted'
   notes?: string
   ownerId: string
+  customFields?: Record<string, unknown>
   convertedToDealId?: string | null
   convertedToContactId?: string | null
   convertedAt?: string
@@ -81,6 +82,11 @@ const leadSchema = new Schema<ILeadDocument>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    customFields: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: new Map(),
     },
     convertedToDealId: {
       type: Schema.Types.ObjectId,

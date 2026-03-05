@@ -14,6 +14,7 @@ export interface IContact {
   tags: string[]
   notes?: string
   ownerId: string
+  customFields?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }

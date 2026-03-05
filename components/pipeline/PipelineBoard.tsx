@@ -9,20 +9,23 @@ import type { IDeal } from '@/types/deal'
 import PipelineColumn from './PipelineColumn'
 
 interface PipelineBoardProps {
+  pipelineId?: string
   onDealClick?: (deal: IDeal) => void
 }
 
-export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
+export default function PipelineBoard({ pipelineId, onDealClick }: PipelineBoardProps) {
   const { data: pipelines, isLoading: pipelinesLoading, isError: pipelinesError } = useGetPipelinesQuery()
-  const defaultPipeline = pipelines?.[0]
+  const activePipeline = pipelineId
+    ? pipelines?.find((p) => p.id === pipelineId)
+    : pipelines?.[0]
 
   const {
     data: dealsData,
     isLoading: dealsLoading,
     isError: dealsError,
   } = useGetDealsQuery(
-    defaultPipeline ? { pipelineId: defaultPipeline.id, status: 'open' } : undefined,
-    { skip: !defaultPipeline }
+    activePipeline ? { pipelineId: activePipeline.id, status: 'open' } : undefined,
+    { skip: !activePipeline }
   )
 
   const [moveDealStage] = useMoveDealStageMutation()
@@ -30,10 +33,10 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
 
   // Check deal rotting on board load
   useEffect(() => {
-    if (defaultPipeline) {
+    if (activePipeline) {
       checkRotting()
     }
-  }, [defaultPipeline, checkRotting])
+  }, [activePipeline, checkRotting])
 
   const onDragEnd = useCallback(
     async (result: DropResult) => {
@@ -44,7 +47,7 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
       if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
       const targetStageId = destination.droppableId
-      const targetStage = defaultPipeline?.stages.find((s) => s.id === targetStageId)
+      const targetStage = activePipeline?.stages.find((s) => s.id === targetStageId)
       if (!targetStage) return
 
       await moveDealStage({
@@ -55,7 +58,7 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
         },
       })
     },
-    [defaultPipeline, moveDealStage]
+    [activePipeline, moveDealStage]
   )
 
   const isLoading = pipelinesLoading || dealsLoading
@@ -69,7 +72,7 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
     )
   }
 
-  if (isError || !defaultPipeline) {
+  if (isError || !activePipeline) {
     return (
       <Alert severity="error">
         Failed to load pipeline. Please refresh the page.
@@ -81,11 +84,10 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
 
   // Group deals by stage id
   const dealsByStage: Record<string, IDeal[]> = {}
-  for (const stage of defaultPipeline.stages) {
+  for (const stage of activePipeline.stages) {
     dealsByStage[stage.id] = []
   }
   for (const deal of deals) {
-    // stage field on a deal stores the stage id
     if (dealsByStage[deal.stage]) {
       dealsByStage[deal.stage].push(deal)
     }
@@ -99,7 +101,6 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
           gap: 1.5,
           overflowX: 'auto',
           pb: 2,
-          // Make scrollbar subtle
           '&::-webkit-scrollbar': { height: 6 },
           '&::-webkit-scrollbar-thumb': {
             backgroundColor: 'grey.300',
@@ -107,7 +108,7 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
           },
         }}
       >
-        {defaultPipeline.stages
+        {activePipeline.stages
           .slice()
           .sort((a, b) => a.order - b.order)
           .map((stage) => (
@@ -119,7 +120,7 @@ export default function PipelineBoard({ onDealClick }: PipelineBoardProps) {
             />
           ))}
 
-        {defaultPipeline.stages.length === 0 && (
+        {activePipeline.stages.length === 0 && (
           <Typography color="text.secondary">
             No stages configured for this pipeline.
           </Typography>

@@ -19,6 +19,7 @@ export interface IDeal {
   lostReason?: string
   notes?: string
   ownerId: string
+  customFields?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }
@@ -129,6 +130,11 @@ const dealSchema = new Schema<IDealDocument>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    customFields: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: new Map(),
     },
   },
   {

@@ -22,9 +22,13 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import DeleteIcon from '@mui/icons-material/Delete'
 import type { IDeal } from '@/types/deal'
 import { useUpdateDealMutation, useDeleteDealMutation } from '@/store/api/dealsApi'
+import { useGetContactQuery } from '@/store/api/contactsApi'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 import DealForm from './DealForm'
+import ActivityTimeline from '@/components/activities/ActivityTimeline'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import PersonIcon from '@mui/icons-material/Person'
 
 interface DealDetailProps {
   deal: IDeal
@@ -61,6 +65,8 @@ export default function DealDetail({ deal }: DealDetailProps) {
 
   const [updateDeal, { isLoading: updating }] = useUpdateDealMutation()
   const [deleteDeal, { isLoading: deleting }] = useDeleteDealMutation()
+
+  const { data: linkedContact } = useGetContactQuery(deal.contactId!, { skip: !deal.contactId })
 
   const status = STATUS_CONFIG[deal.status] ?? STATUS_CONFIG.open
 
@@ -214,6 +220,44 @@ export default function DealDetail({ deal }: DealDetailProps) {
               </Grid>
             )}
           </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Linked Contact */}
+      {linkedContact && (
+        <Card sx={{ mt: 2 }}>
+          <CardHeader title="Contact" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} />
+          <Divider />
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <PersonIcon color="action" />
+              <Box>
+                <Typography
+                  variant="body2"
+                  fontWeight={600}
+                  component={Link}
+                  href={`/contacts/${linkedContact.id}`}
+                  sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  {linkedContact.firstName} {linkedContact.lastName}
+                </Typography>
+                {linkedContact.company && (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {linkedContact.company}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Activities */}
+      <Card sx={{ mt: 2 }}>
+        <CardHeader title="Activities" titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }} />
+        <Divider />
+        <CardContent>
+          <ActivityTimeline dealId={deal.id} />
         </CardContent>
       </Card>
 

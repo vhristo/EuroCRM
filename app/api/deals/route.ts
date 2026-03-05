@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import Deal from '@/models/Deal'
 import { CreateDealSchema } from '@/lib/validators/dealSchema'
 import { PAGINATION } from '@/utils/constants'
+import { evaluateWorkflows } from '@/lib/workflows/engine'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req)
@@ -74,15 +75,17 @@ export async function POST(req: NextRequest) {
   })
 
   const obj = deal.toObject()
-  return NextResponse.json(
-    {
-      ...obj,
-      id: obj._id.toString(),
-      organizationId: obj.organizationId.toString(),
-      pipelineId: obj.pipelineId.toString(),
-      contactId: obj.contactId?.toString(),
-      ownerId: obj.ownerId.toString(),
-    },
-    { status: 201 }
-  )
+  const serializedDeal: Record<string, unknown> = {
+    ...obj,
+    id: obj._id.toString(),
+    organizationId: obj.organizationId.toString(),
+    pipelineId: obj.pipelineId.toString(),
+    contactId: obj.contactId?.toString(),
+    ownerId: obj.ownerId.toString(),
+  }
+
+  // Fire-and-forget: workflow errors must not block the response
+  evaluateWorkflows(auth.organizationId, 'deal_created', serializedDeal).catch(console.error)
+
+  return NextResponse.json(serializedDeal, { status: 201 })
 }

@@ -5,6 +5,7 @@ import { ConvertLeadSchema } from '@/lib/validators/leadSchema'
 import Lead from '@/models/Lead'
 import Contact from '@/models/Contact'
 import Deal from '@/models/Deal'
+import { evaluateWorkflows } from '@/lib/workflows/engine'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -76,6 +77,17 @@ export async function POST(req: NextRequest, context: RouteContext) {
       },
     }
   )
+
+  // Re-fetch the updated lead so we have a plain object for workflows
+  const updatedLead = await Lead.findById(id).lean<Record<string, unknown>>()
+  if (updatedLead) {
+    const leadEntity: Record<string, unknown> = {
+      ...updatedLead,
+      id: String(updatedLead._id),
+    }
+    // Fire-and-forget
+    evaluateWorkflows(auth.organizationId, 'lead_converted', leadEntity).catch(console.error)
+  }
 
   return NextResponse.json(
     {

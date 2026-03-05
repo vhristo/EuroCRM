@@ -17,6 +17,7 @@ export interface IDeal {
   lostReason?: string
   notes?: string
   ownerId: string
+  customFields?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }

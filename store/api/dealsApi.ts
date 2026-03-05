@@ -120,6 +120,39 @@ export const dealsApi = baseApi.injectEndpoints({
         { type: 'Deal', id: 'LIST' },
         { type: 'Deal', id },
       ],
+      async onQueryStarted({ id, data }, { dispatch, queryFulfilled, getState }) {
+        // Find all getDeals cache entries and patch them optimistically
+        const state = getState()
+        const patches: Array<{ undo: () => void }> = []
+
+        // Iterate over all getDeals cache entries
+        for (const { endpointName, originalArgs } of dealsApi.util.selectInvalidatedBy(state, [
+          { type: 'Deal', id: 'LIST' },
+        ])) {
+          if (endpointName !== 'getDeals') continue
+          const patch = dispatch(
+            dealsApi.util.updateQueryData('getDeals', originalArgs as GetDealsParams | void, (draft) => {
+              const deal = draft.items.find((d) => d.id === id)
+              if (deal) {
+                deal.stage = data.stage
+                if (data.probability !== undefined) {
+                  deal.probability = data.probability
+                }
+              }
+            })
+          )
+          patches.push(patch)
+        }
+
+        try {
+          await queryFulfilled
+        } catch {
+          // Revert all optimistic patches on failure
+          for (const patch of patches) {
+            patch.undo()
+          }
+        }
+      },
     }),
 
     checkRotting: builder.mutation<{ checked: number; markedRotten: number; markedFresh: number }, void>({

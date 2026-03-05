@@ -1,9 +1,6 @@
 import { baseApi } from './baseApi'
 import type { IPipeline } from '@/types/pipeline'
-
-export interface CreatePipelineInput {
-  name: string
-}
+import type { CreatePipelineInput, UpdatePipelineInput } from '@/lib/validators/pipelineSchema'
 
 export const pipelineApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -18,6 +15,11 @@ export const pipelineApi = baseApi.injectEndpoints({
           : [{ type: 'Pipeline', id: 'LIST' }],
     }),
 
+    getPipeline: builder.query<IPipeline, string>({
+      query: (id) => `/pipeline/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Pipeline', id }],
+    }),
+
     createPipeline: builder.mutation<IPipeline, CreatePipelineInput>({
       query: (body) => ({
         url: '/pipeline',
@@ -26,8 +28,43 @@ export const pipelineApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Pipeline', id: 'LIST' }],
     }),
+
+    updatePipeline: builder.mutation<IPipeline, { id: string; data: UpdatePipelineInput }>({
+      query: ({ id, data }) => ({
+        url: `/pipeline/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Pipeline', id },
+        { type: 'Pipeline', id: 'LIST' },
+      ],
+    }),
+
+    deletePipeline: builder.mutation<{ success: true }, string>({
+      query: (id) => ({
+        url: `/pipeline/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Pipeline', id: 'LIST' }],
+    }),
+
+    setDefaultPipeline: builder.mutation<IPipeline, string>({
+      query: (id) => ({
+        url: `/pipeline/${id}/default`,
+        method: 'PUT',
+      }),
+      invalidatesTags: [{ type: 'Pipeline', id: 'LIST' }],
+    }),
   }),
   overrideExisting: false,
 })
 
-export const { useGetPipelinesQuery, useCreatePipelineMutation } = pipelineApi
+export const {
+  useGetPipelinesQuery,
+  useGetPipelineQuery,
+  useCreatePipelineMutation,
+  useUpdatePipelineMutation,
+  useDeletePipelineMutation,
+  useSetDefaultPipelineMutation,
+} = pipelineApi

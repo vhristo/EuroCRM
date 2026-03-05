@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Divider,
   Grid,
   MenuItem,
   Stack,
@@ -19,6 +20,9 @@ import {
   useCreateContactMutation,
   useUpdateContactMutation,
 } from '@/store/api/contactsApi'
+import { useGetCustomFieldsQuery } from '@/store/api/customFieldsApi'
+import { validateCustomFieldValues } from '@/lib/validators/customFieldSchema'
+import { CustomFieldRenderer } from '@/components/shared/CustomFieldRenderer'
 import type { IContact } from '@/types/contact'
 import { CURRENCIES } from '@/utils/constants'
 
@@ -45,6 +49,13 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
   const [createContact, { isLoading: isCreating }] = useCreateContactMutation()
   const [updateContact, { isLoading: isUpdating }] = useUpdateContactMutation()
   const isLoading = isCreating || isUpdating
+
+  // Custom fields
+  const { data: customFieldDefs = [] } = useGetCustomFieldsQuery('contacts')
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>(
+    contact?.customFields ?? {}
+  )
+  const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({})
 
   const {
     control,
@@ -85,16 +96,38 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
         tags: contact.tags,
         notes: contact.notes ?? '',
       })
+      setCustomFieldValues(contact.customFields ?? {})
     }
   }, [contact, reset])
 
+  const handleCustomFieldChange = (key: string, value: unknown) => {
+    setCustomFieldValues((prev) => ({ ...prev, [key]: value }))
+    // Clear error for this key when user changes the value
+    setCustomFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
   const onSubmit = async (data: CreateContactInput) => {
+    // Validate custom fields before submitting
+    const cfErrors = validateCustomFieldValues(customFieldDefs, customFieldValues)
+    if (Object.keys(cfErrors).length > 0) {
+      setCustomFieldErrors(cfErrors)
+      return
+    }
+
     try {
       let result: IContact
+      const payload = {
+        ...data,
+        ...(customFieldDefs.length > 0 ? { customFields: customFieldValues } : {}),
+      }
       if (isEditing && contact) {
-        result = await updateContact({ id: contact.id, data }).unwrap()
+        result = await updateContact({ id: contact.id, data: payload }).unwrap()
       } else {
-        result = await createContact(data).unwrap()
+        result = await createContact(payload).unwrap()
       }
       onSuccess(result)
     } catch {
@@ -341,6 +374,19 @@ export function ContactForm({ contact, onSuccess, onCancel }: ContactFormProps) 
           />
         </Grid>
       </Grid>
+
+      {/* Custom Fields */}
+      {customFieldDefs.length > 0 && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <CustomFieldRenderer
+            fields={customFieldDefs}
+            values={customFieldValues}
+            onChange={handleCustomFieldChange}
+            errors={customFieldErrors}
+          />
+        </>
+      )}
 
       <Stack direction="row" spacing={1} justifyContent="flex-end" mt={3}>
         {onCancel && (

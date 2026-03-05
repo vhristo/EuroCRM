@@ -19,8 +19,12 @@ import PeopleIcon from '@mui/icons-material/People'
 import HandshakeIcon from '@mui/icons-material/Handshake'
 import LeaderboardIcon from '@mui/icons-material/Leaderboard'
 import EventNoteIcon from '@mui/icons-material/EventNote'
+import EmailIcon from '@mui/icons-material/Email'
 import BarChartIcon from '@mui/icons-material/BarChart'
 import SettingsIcon from '@mui/icons-material/Settings'
+import DynamicFormIcon from '@mui/icons-material/DynamicForm'
+import CampaignIcon from '@mui/icons-material/Campaign'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { setSidebarOpen } from '@/store/slices/uiSlice'
 import { useTheme, useMediaQuery } from '@mui/material'
@@ -34,6 +38,10 @@ const navItems = [
   { label: 'Deals', href: '/deals', icon: <HandshakeIcon /> },
   { label: 'Leads', href: '/leads', icon: <LeaderboardIcon /> },
   { label: 'Activities', href: '/activities', icon: <EventNoteIcon /> },
+  { label: 'Email', href: '/email', icon: <EmailIcon /> },
+  { label: 'Campaigns', href: '/campaigns', icon: <CampaignIcon /> },
+  { label: 'Web Forms', href: '/web-forms', icon: <DynamicFormIcon /> },
+  { label: 'Automations', href: '/workflows', icon: <SmartToyIcon /> },
   { label: 'Reports', href: '/reports', icon: <BarChartIcon /> },
   { label: 'Settings', href: '/settings', icon: <SettingsIcon /> },
 ]

@@ -12,22 +12,37 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
+  Tabs,
+  Tab,
+  Box,
 } from '@mui/material'
 import PageHeader from '@/components/layout/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppDispatch } from '@/store/hooks'
 import { setCredentials } from '@/store/slices/authSlice'
+import { addNotification } from '@/store/slices/uiSlice'
 import {
   useGetOrganizationQuery,
   useUpdateOrganizationMutation,
   useUpdateProfileMutation,
   useChangePasswordMutation,
 } from '@/store/api/settingsApi'
+import { CustomFieldBuilder } from '@/components/settings/CustomFieldBuilder'
+import PipelineManager from '@/components/settings/PipelineManager'
+import EmailConfigForm from '@/components/settings/EmailConfigForm'
+import ApiKeyManager from '@/components/settings/ApiKeyManager'
+import WebhookManager from '@/components/settings/WebhookManager'
+import { GdprManager } from '@/components/settings/GdprManager'
 import { CURRENCIES } from '@/utils/constants'
+
+function TabPanel({ children, value, index }: { children: React.ReactNode; value: number; index: number }) {
+  return value === index ? <Box sx={{ py: 3 }}>{children}</Box> : null
+}
 
 export default function SettingsPage() {
   const { user, accessToken } = useAuth()
   const dispatch = useAppDispatch()
+  const [activeTab, setActiveTab] = useState(0)
 
   const { data: org, isLoading: orgLoading } = useGetOrganizationQuery()
   const [updateOrg, { isLoading: savingOrg }] = useUpdateOrganizationMutation()
@@ -44,11 +59,6 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
 
-  const [orgMsg, setOrgMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  // Initialize org fields when data arrives
   if (org && !orgInitialized) {
     setOrgName(org.name)
     setCurrency(org.settings?.defaultCurrency ?? 'EUR')
@@ -73,9 +83,9 @@ export default function SettingsPage() {
         name: orgName,
         settings: { defaultCurrency: currency, timezone },
       }).unwrap()
-      setOrgMsg({ type: 'success', text: 'Organization settings saved.' })
+      dispatch(addNotification({ type: 'success', message: 'Organization settings saved.' }))
     } catch {
-      setOrgMsg({ type: 'error', text: 'Failed to save organization settings.' })
+      dispatch(addNotification({ type: 'error', message: 'Failed to save organization settings.' }))
     }
   }
 
@@ -88,9 +98,9 @@ export default function SettingsPage() {
           user: { ...user, firstName: updated.firstName, lastName: updated.lastName },
         }))
       }
-      setProfileMsg({ type: 'success', text: 'Profile updated.' })
+      dispatch(addNotification({ type: 'success', message: 'Profile updated.' }))
     } catch {
-      setProfileMsg({ type: 'error', text: 'Failed to update profile.' })
+      dispatch(addNotification({ type: 'error', message: 'Failed to update profile.' }))
     }
   }
 
@@ -100,9 +110,9 @@ export default function SettingsPage() {
       await changePassword({ currentPassword, newPassword }).unwrap()
       setCurrentPassword('')
       setNewPassword('')
-      setPasswordMsg({ type: 'success', text: 'Password changed.' })
+      dispatch(addNotification({ type: 'success', message: 'Password changed.' }))
     } catch {
-      setPasswordMsg({ type: 'error', text: 'Failed to change password. Check your current password.' })
+      dispatch(addNotification({ type: 'error', message: 'Failed to change password. Check your current password.' }))
     }
   }
 
@@ -110,111 +120,148 @@ export default function SettingsPage() {
     <div className="p-6">
       <PageHeader title="Settings" />
 
-      <Grid container spacing={3} className="mt-2">
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" className="mb-4">Organization</Typography>
-              {orgLoading ? (
-                <CircularProgress size={24} />
-              ) : (
-                <div className="flex flex-col gap-4">
-                  <TextField
-                    label="Organization Name"
-                    fullWidth
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                  />
-                  <TextField
-                    label="Default Currency"
-                    fullWidth
-                    select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                    {CURRENCIES.map((c) => (
-                      <MenuItem key={c} value={c}>{c}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label="Timezone"
-                    fullWidth
-                    value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
-                  />
-                  <Button variant="contained" onClick={handleSaveOrg} disabled={savingOrg}>
-                    {savingOrg ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                  {orgMsg && (
-                    <Alert severity={orgMsg.type} onClose={() => setOrgMsg(null)}>
-                      {orgMsg.text}
-                    </Alert>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_e, v) => setActiveTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab label="Organization" />
+          <Tab label="Profile" />
+          <Tab label="Pipelines" />
+          <Tab label="Custom Fields" />
+          <Tab label="Email Config" />
+          <Tab label="API Keys" />
+          <Tab label="Webhooks" />
+          <Tab label="GDPR / Privacy" />
+        </Tabs>
+      </Box>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" className="mb-4">Your Profile</Typography>
-              <div className="flex flex-col gap-4">
-                <TextField label="Email" fullWidth value={user?.email ?? ''} disabled />
+      {/* Organization */}
+      <TabPanel value={activeTab} index={0}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" className="mb-4">Organization</Typography>
+            {orgLoading ? (
+              <CircularProgress size={24} />
+            ) : (
+              <div className="flex flex-col gap-4" style={{ maxWidth: 500 }}>
                 <TextField
-                  label="First Name"
+                  label="Organization Name"
                   fullWidth
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
                 />
                 <TextField
-                  label="Last Name"
+                  label="Default Currency"
                   fullWidth
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
+                  {CURRENCIES.map((c) => (
+                    <MenuItem key={c} value={c}>{c}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Timezone"
+                  fullWidth
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
                 />
-                <TextField label="Role" fullWidth value={user?.role ?? ''} disabled />
-                <Button variant="contained" onClick={handleSaveProfile} disabled={savingProfile}>
-                  {savingProfile ? 'Saving...' : 'Update Profile'}
+                <Button variant="contained" onClick={handleSaveOrg} disabled={savingOrg}>
+                  {savingOrg ? 'Saving...' : 'Save Changes'}
                 </Button>
-                {profileMsg && (
-                  <Alert severity={profileMsg.type} onClose={() => setProfileMsg(null)}>
-                    {profileMsg.text}
-                  </Alert>
-                )}
-
-                <Divider />
-                <Typography variant="subtitle2" color="text.secondary">
-                  Change Password
-                </Typography>
-                <TextField
-                  label="Current Password"
-                  type="password"
-                  fullWidth
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                />
-                <TextField
-                  label="New Password"
-                  type="password"
-                  fullWidth
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-                <Button variant="outlined" onClick={handleChangePassword} disabled={savingPassword}>
-                  {savingPassword ? 'Updating...' : 'Update Password'}
-                </Button>
-                {passwordMsg && (
-                  <Alert severity={passwordMsg.type} onClose={() => setPasswordMsg(null)}>
-                    {passwordMsg.text}
-                  </Alert>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            )}
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Profile */}
+      <TabPanel value={activeTab} index={1}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" className="mb-4">Your Profile</Typography>
+            <div className="flex flex-col gap-4" style={{ maxWidth: 500 }}>
+              <TextField label="Email" fullWidth value={user?.email ?? ''} disabled />
+              <TextField
+                label="First Name"
+                fullWidth
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <TextField
+                label="Last Name"
+                fullWidth
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+              <TextField label="Role" fullWidth value={user?.role ?? ''} disabled />
+              <Button variant="contained" onClick={handleSaveProfile} disabled={savingProfile}>
+                {savingProfile ? 'Saving...' : 'Update Profile'}
+              </Button>
+
+              <Divider />
+              <Typography variant="subtitle2" color="text.secondary">
+                Change Password
+              </Typography>
+              <TextField
+                label="Current Password"
+                type="password"
+                fullWidth
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+              <TextField
+                label="New Password"
+                type="password"
+                fullWidth
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <Button variant="outlined" onClick={handleChangePassword} disabled={savingPassword}>
+                {savingPassword ? 'Updating...' : 'Update Password'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Pipelines */}
+      <TabPanel value={activeTab} index={2}>
+        <PipelineManager />
+      </TabPanel>
+
+      {/* Custom Fields */}
+      <TabPanel value={activeTab} index={3}>
+        <Card>
+          <CardContent>
+            <CustomFieldBuilder />
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Email Config */}
+      <TabPanel value={activeTab} index={4}>
+        <EmailConfigForm />
+      </TabPanel>
+
+      {/* API Keys */}
+      <TabPanel value={activeTab} index={5}>
+        <ApiKeyManager />
+      </TabPanel>
+
+      {/* Webhooks */}
+      <TabPanel value={activeTab} index={6}>
+        <WebhookManager />
+      </TabPanel>
+
+      {/* GDPR / Privacy */}
+      <TabPanel value={activeTab} index={7}>
+        <GdprManager />
+      </TabPanel>
     </div>
   )
 }

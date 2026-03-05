@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db'
 import { CreateContactSchema } from '@/lib/validators/contactSchema'
 import Contact from '@/models/Contact'
 import { PAGINATION } from '@/utils/constants'
+import { evaluateWorkflows } from '@/lib/workflows/engine'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req)
@@ -88,18 +89,20 @@ export async function POST(req: NextRequest) {
 
     const obj = contact.toObject() as Record<string, unknown>
 
-    return NextResponse.json(
-      {
-        ...obj,
-        id: (obj._id as { toString(): string }).toString(),
-        _id: undefined,
-        organizationId: auth.organizationId,
-        ownerId: auth.userId,
-        createdAt: (obj.createdAt as Date).toISOString(),
-        updatedAt: (obj.updatedAt as Date).toISOString(),
-      },
-      { status: 201 }
-    )
+    const serializedContact: Record<string, unknown> = {
+      ...obj,
+      id: (obj._id as { toString(): string }).toString(),
+      _id: undefined,
+      organizationId: auth.organizationId,
+      ownerId: auth.userId,
+      createdAt: (obj.createdAt as Date).toISOString(),
+      updatedAt: (obj.updatedAt as Date).toISOString(),
+    }
+
+    // Fire-and-forget
+    evaluateWorkflows(auth.organizationId, 'contact_created', serializedContact).catch(console.error)
+
+    return NextResponse.json(serializedContact, { status: 201 })
   } catch (error: unknown) {
     console.error('[POST /api/contacts]', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

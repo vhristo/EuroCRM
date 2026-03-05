@@ -16,6 +16,7 @@ export interface IContact {
   tags: string[]
   notes?: string
   ownerId: string
+  customFields?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }
@@ -89,6 +90,11 @@ const contactSchema = new Schema<IContactDocument>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    customFields: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: new Map(),
     },
   },
   {
