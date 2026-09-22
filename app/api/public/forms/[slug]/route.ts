@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Types } from 'mongoose'
 import { connectDB } from '@/lib/db'
 import { buildSubmissionSchema } from '@/lib/validators/webFormSchema'
 import WebForm from '@/models/WebForm'
 import type { IWebFormDocument } from '@/models/WebForm'
 import Lead from '@/models/Lead'
+import Membership from '@/models/Membership'
 import type { IWebFormField } from '@/types/webForm'
 
 const CORS_HEADERS = {
@@ -107,18 +109,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
   // Require at minimum a name
   const leadName = leadData.name ?? data['name'] ?? 'Web Form Submission'
 
-  // Find the organization's first admin user to assign as owner
-  // We use a placeholder ownerId from the org — in production this would be
-  // a configured default owner on the form itself
-  const User = (await import('@/models/User')).default
-  const orgOwner = await User.findOne({
+  // Assign the lead to the organization's longest-standing admin.
+  const adminMembership = await Membership.findOne({
     organizationId: doc.organizationId,
     role: 'admin',
   })
-    .select('_id')
-    .lean<{ _id: unknown }>()
+    .sort({ createdAt: 1 })
+    .select('userId')
+    .lean<{ userId: Types.ObjectId } | null>()
 
-  const ownerId = orgOwner?._id ?? doc.organizationId
+  // Never fabricate an ownerId. Lead.ownerId is `ref: 'User'`, so falling back to
+  // the organization id would write a structurally corrupt lead that looks fine
+  // until something populates or filters by owner.
+  if (!adminMembership) {
+    console.error(
+      `[public form] no admin membership for organization ${String(doc.organizationId)} — dropping submission for form "${slug}"`
+    )
+    return NextResponse.json(
+      { error: 'This form is not accepting submissions right now' },
+      { status: 500, headers: CORS_HEADERS }
+    )
+  }
+
+  const ownerId = adminMembership.userId
 
   await Lead.create({
     organizationId: doc.organizationId,

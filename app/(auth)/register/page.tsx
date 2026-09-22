@@ -17,7 +17,7 @@ import {
 } from '@mui/material'
 import { RegisterSchema, RegisterInput } from '@/lib/validators/authSchema'
 import { useAppDispatch } from '@/store/hooks'
-import { setCredentials } from '@/store/slices/authSlice'
+import { setSession } from '@/store/slices/authSlice'
 import type { IAuthResponse } from '@/types/auth'
 
 export default function RegisterPage() {
@@ -51,7 +51,13 @@ export default function RegisterPage() {
       }
 
       if ('accessToken' in body) {
-        dispatch(setCredentials({ user: body.user, accessToken: body.accessToken }))
+        dispatch(
+          setSession({
+            user: body.user,
+            accessToken: body.accessToken,
+            organizations: body.organizations ?? [],
+          })
+        )
         router.push('/dashboard')
       }
     } catch {

@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { connectDB } from '@/lib/db'
 import { RegisterSchema } from '@/lib/validators/authSchema'
-import { signAccessToken, signRefreshToken, hashToken, getRefreshExpiry } from '@/lib/auth'
+import {
+  issueSession,
+  buildSessionResponse,
+  setRefreshCookie,
+  listOrganizations,
+} from '@/lib/session'
+import { seedOrganization } from '@/lib/orgBootstrap'
 import User from '@/models/User'
 import Organization from '@/models/Organization'
+import Membership from '@/models/Membership'
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,69 +29,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
 
-    const organization = await Organization.create({
-      name: organizationName,
-    })
+    const organization = await Organization.create({ name: organizationName })
+    await seedOrganization(organization._id.toString())
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    const refreshToken = signRefreshToken({
-      userId: 'pending',
-      organizationId: organization._id.toString(),
-      email,
-      role: 'admin',
-    })
-    const tokenHash = await hashToken(refreshToken)
-
     const user = await User.create({
-      organizationId: organization._id,
       email,
       passwordHash,
       firstName,
       lastName,
-      role: 'admin',
-      refreshTokens: [{ tokenHash, expiresAt: getRefreshExpiry() }],
+      refreshTokens: [],
       lastLoginAt: new Date(),
+      // Deprecated, still written so a rollback to a pre-multi-org image works.
+      organizationId: organization._id,
+      role: 'admin',
+      // This user's legacy organizationId is already represented by the
+      // Membership created below, so the lazy backfill must never fire for them.
+      membershipsBackfilledAt: new Date(),
     })
 
-    const payload = {
-      userId: user._id.toString(),
-      organizationId: organization._id.toString(),
-      email: user.email,
-      role: user.role,
-    }
+    const membership = await Membership.create({
+      userId: user._id,
+      organizationId: organization._id,
+      role: 'admin',
+    })
 
-    const accessToken = signAccessToken(payload)
-    const finalRefreshToken = signRefreshToken(payload)
-    const finalHash = await hashToken(finalRefreshToken)
-
-    await User.updateOne(
-      { _id: user._id },
-      { $set: { refreshTokens: [{ tokenHash: finalHash, expiresAt: getRefreshExpiry() }] } }
-    )
+    const { accessToken, refreshToken } = await issueSession(user, membership)
+    const organizations = await listOrganizations(user._id.toString())
 
     const response = NextResponse.json(
-      {
-        accessToken,
-        user: {
-          id: user._id.toString(),
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          organizationId: organization._id.toString(),
-        },
-      },
+      buildSessionResponse(user, membership, organizations, accessToken),
       { status: 201 }
     )
 
-    response.cookies.set('refreshToken', finalRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/api/auth',
-      maxAge: 7 * 24 * 60 * 60,
-    })
+    setRefreshCookie(response, refreshToken)
 
     return response
   } catch (error: unknown) {

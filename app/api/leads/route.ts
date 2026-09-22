@@ -55,13 +55,20 @@ export async function POST(req: NextRequest) {
     ownerId: auth.userId,
   })
 
-  const serializedLead = lead.toObject() as Record<string, unknown>
+  const obj = lead.toObject() as Record<string, unknown>
+
+  const serializedLead: Record<string, unknown> = {
+    ...obj,
+    id: (obj._id as { toString(): string }).toString(),
+    _id: undefined,
+    organizationId: auth.organizationId,
+    ownerId: auth.userId,
+    createdAt: (obj.createdAt as Date).toISOString(),
+    updatedAt: (obj.updatedAt as Date).toISOString(),
+  }
 
   // Fire-and-forget
-  evaluateWorkflows(auth.organizationId, 'lead_created', {
-    ...serializedLead,
-    id: String(serializedLead._id),
-  }).catch(console.error)
+  evaluateWorkflows(auth.organizationId, 'lead_created', serializedLead).catch(console.error)
 
   return NextResponse.json(serializedLead, { status: 201 })
 }

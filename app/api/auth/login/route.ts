@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { connectDB } from '@/lib/db'
 import { LoginSchema } from '@/lib/validators/authSchema'
-import { signAccessToken, signRefreshToken, hashToken, getRefreshExpiry } from '@/lib/auth'
+import {
+  resolveActiveMembership,
+  issueSession,
+  buildSessionResponse,
+  setRefreshCookie,
+  listOrganizations,
+} from '@/lib/session'
 import User from '@/models/User'
 
 export async function POST(req: NextRequest) {
@@ -26,44 +32,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    const payload = {
-      userId: user._id.toString(),
-      organizationId: user.organizationId.toString(),
-      email: user.email,
-      role: user.role,
-    }
-
-    const accessToken = signAccessToken(payload)
-    const refreshToken = signRefreshToken(payload)
-    const tokenHash = await hashToken(refreshToken)
-
-    await User.updateOne(
-      { _id: user._id },
-      {
-        $push: { refreshTokens: { tokenHash, expiresAt: getRefreshExpiry() } },
-        $set: { lastLoginAt: new Date() },
-      }
+    const membership = await resolveActiveMembership(
+      user._id.toString(),
+      user.lastOrganizationId?.toString()
     )
 
-    const response = NextResponse.json({
-      accessToken,
-      user: {
-        id: user._id.toString(),
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        organizationId: user.organizationId.toString(),
-      },
-    })
+    // 403, not 401: the credentials were correct, so the login form must not
+    // tell this user their password is wrong.
+    if (!membership) {
+      return NextResponse.json(
+        { error: 'No organization access', code: 'NO_MEMBERSHIP' },
+        { status: 403 }
+      )
+    }
 
-    response.cookies.set('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/api/auth',
-      maxAge: 7 * 24 * 60 * 60,
-    })
+    const { accessToken, refreshToken } = await issueSession(user, membership)
+    await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } })
+
+    const organizations = await listOrganizations(user._id.toString())
+
+    const response = NextResponse.json(
+      buildSessionResponse(user, membership, organizations, accessToken)
+    )
+
+    setRefreshCookie(response, refreshToken)
 
     return response
   } catch (error: unknown) {
