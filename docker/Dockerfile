@@ -6,7 +6,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
 
 # Copy lockfile and manifests only — cache layer until these change
 COPY package.json pnpm-lock.yaml ./
@@ -18,13 +18,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
 
 # Bring in installed modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy full source
 COPY . .
+
+# public/ is optional in Next.js but the runner stage copies it
+RUN mkdir -p public
 
 # Build Next.js production bundle
 ENV NEXT_TELEMETRY_DISABLED=1

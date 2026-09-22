@@ -1,0 +1,28 @@
+# Dependencies — installed fresh inside the image
+node_modules
+.pnpm-store
+
+# Build output
+.next
+out
+
+# Secrets — never bake env files into an image
+.env
+.env.*
+!.env.example
+
+# VCS / tooling
+.git
+.gitignore
+.vscode
+.idea
+.claude
+*.log
+.DS_Store
+
+# Not needed at build time
+docs
+skills
+docker-compose*.yml
+README.md
+LICENSE
