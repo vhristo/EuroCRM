@@ -255,3 +255,19 @@ docker logs eurocrm-app-dev -f
 - [Authentication](./auth.md) — JWT and encryption key requirements
 - [Email](./features/email.md) — SMTP configuration
 - [Settings](./features/settings.md) — post-deployment configuration
+
+
+---
+
+## Database migrations
+
+This project has no migration framework. The one migration that exists,
+`scripts/migrate-memberships.js`, backfills organization memberships for users
+created before multi-company support.
+
+It is additive and idempotent, and the pre-multi-company code reads nothing it
+writes — so run it **before** deploying the new image, while the old one is still
+serving traffic. It must be run with `mongosh`, not `node`: the production image
+is a Next.js standalone build with no source tree and no full `node_modules`.
+
+See [scripts/README.md](../scripts/README.md) for the exact invocation.

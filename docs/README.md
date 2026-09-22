@@ -22,7 +22,8 @@ EuroCRM is a PipeDrive-inspired CRM SaaS built for European SMBs and sales teams
 | **REST API** | External API (v1) with API key authentication for integrations |
 | **Webhooks** | Real-time event delivery with HMAC-SHA256 signatures and auto-disable on repeated failures |
 | **GDPR Tools** | Data export and right-to-erasure (anonymization) for contacts |
-| **Role-Based Access** | Three roles — admin, manager, sales_rep — with fine-grained permission enforcement |
+| **Role-Based Access** | Three roles — admin, manager, sales_rep — held per organization, with fine-grained permission enforcement |
+| **Multiple Companies** | One account can own several organizations and switch between them; data stays fully isolated per organization |
 
 ---
 
@@ -112,7 +113,9 @@ See [deployment.md](./deployment.md) for the complete reference.
 pnpm dev          # Start development server
 pnpm build        # Production build
 pnpm lint         # ESLint
-pnpm tsc --noEmit # TypeScript type check
+pnpm type-check   # TypeScript type check
+pnpm verify       # Integration checks against a running app (see scripts/verify)
+pnpm verify:ui    # Browser checks — needs playwright installed separately
 ```
 
 ---
@@ -139,6 +142,8 @@ pnpm tsc --noEmit # TypeScript type check
 - [Web Forms API](./api/web-forms-api.md)
 
 ### Reference
-- [Authentication and Authorization](./auth.md)
+- [Authentication and Authorization](./auth.md) — including organization membership and switching
+- [Verification suites](../scripts/verify/README.md)
+- [Database migrations](../scripts/README.md)
 - [GDPR Compliance](./gdpr.md)
 - [Deployment Guide](./deployment.md)

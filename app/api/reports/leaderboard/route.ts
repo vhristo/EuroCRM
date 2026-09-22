@@ -3,7 +3,8 @@ import { connectDB } from '@/lib/db'
 import { requireAuth, unauthorizedResponse } from '@/lib/auth'
 import Deal from '@/models/Deal'
 import User from '@/models/User'
-import mongoose from 'mongoose'
+import Membership from '@/models/Membership'
+import mongoose, { Types } from 'mongoose'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req)
@@ -49,8 +50,19 @@ export async function GET(req: NextRequest) {
   ])
 
   const userIds = leaderboard.map((l) => l._id)
+
+  // Resolve names through membership, not by user id alone: a deal whose owner
+  // has since left would otherwise leak that person's name and email back to an
+  // organization they no longer belong to.
+  const memberships = await Membership.find(
+    { organizationId: auth.organizationId, userId: { $in: userIds } },
+    { userId: 1 }
+  ).lean<{ userId: Types.ObjectId }[]>()
+
+  const memberIds = memberships.map((m) => m.userId)
+
   const users = await User.find(
-    { _id: { $in: userIds } },
+    { _id: { $in: memberIds } },
     { firstName: 1, lastName: 1, email: 1 }
   ).lean()
 
@@ -68,7 +80,7 @@ export async function GET(req: NextRequest) {
       return {
         rank: index + 1,
         userId: entry._id.toString(),
-        name: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+        name: user ? `${user.firstName} ${user.lastName}` : 'Former member',
         email: user?.email ?? '',
         wonDeals: entry.wonDeals,
         totalRevenue: entry.totalRevenue,
