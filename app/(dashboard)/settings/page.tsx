@@ -17,6 +17,7 @@ import {
   Box,
 } from '@mui/material'
 import PageHeader from '@/components/layout/PageHeader'
+import CompanyManager from '@/components/organizations/CompanyManager'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppDispatch } from '@/store/hooks'
 import { setCredentials } from '@/store/slices/authSlice'
@@ -35,14 +36,56 @@ import WebhookManager from '@/components/settings/WebhookManager'
 import { GdprManager } from '@/components/settings/GdprManager'
 import { CURRENCIES } from '@/utils/constants'
 
-function TabPanel({ children, value, index }: { children: React.ReactNode; value: number; index: number }) {
+/** Tabs are addressed by key, not position, so the set can differ by role. */
+const TAB_LABELS = {
+  companies: 'Companies',
+  organization: 'Organization',
+  profile: 'Profile',
+  pipelines: 'Pipelines',
+  customFields: 'Custom Fields',
+  emailConfig: 'Email Config',
+  apiKeys: 'API Keys',
+  webhooks: 'Webhooks',
+  gdpr: 'GDPR / Privacy',
+} as const
+
+type TabKey = keyof typeof TAB_LABELS
+
+const ADMIN_TABS: TabKey[] = [
+  'companies',
+  'organization',
+  'profile',
+  'pipelines',
+  'customFields',
+  'emailConfig',
+  'apiKeys',
+  'webhooks',
+  'gdpr',
+]
+
+// Everyone can see the companies they belong to and edit their own profile —
+// those are account-level, not organization-level.
+const MEMBER_TABS: TabKey[] = ['companies', 'profile']
+
+function TabPanel({
+  children,
+  value,
+  index,
+}: {
+  children: React.ReactNode
+  value: TabKey
+  index: TabKey
+}) {
   return value === index ? <Box sx={{ py: 3 }}>{children}</Box> : null
 }
 
 export default function SettingsPage() {
   const { user, accessToken } = useAuth()
   const dispatch = useAppDispatch()
-  const [activeTab, setActiveTab] = useState(0)
+  const isAdmin = user?.role === 'admin'
+  const tabs = isAdmin ? ADMIN_TABS : MEMBER_TABS
+  const [activeTab, setActiveTab] = useState<TabKey>('companies')
+  const activeIndex = Math.max(0, tabs.indexOf(activeTab))
 
   const { data: org, isLoading: orgLoading } = useGetOrganizationQuery()
   const [updateOrg, { isLoading: savingOrg }] = useUpdateOrganizationMutation()
@@ -64,17 +107,6 @@ export default function SettingsPage() {
     setCurrency(org.settings?.defaultCurrency ?? 'EUR')
     setTimezone(org.settings?.timezone ?? 'Europe/Berlin')
     setOrgInitialized(true)
-  }
-
-  if (user?.role !== 'admin') {
-    return (
-      <div className="p-6">
-        <PageHeader title="Settings" />
-        <Alert severity="warning" className="mt-4">
-          Only administrators can access settings.
-        </Alert>
-      </div>
-    )
   }
 
   const handleSaveOrg = async () => {
@@ -122,24 +154,31 @@ export default function SettingsPage() {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
         <Tabs
-          value={activeTab}
-          onChange={(_e, v) => setActiveTab(v)}
+          value={activeIndex}
+          onChange={(_e, v: number) => setActiveTab(tabs[v])}
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab label="Organization" />
-          <Tab label="Profile" />
-          <Tab label="Pipelines" />
-          <Tab label="Custom Fields" />
-          <Tab label="Email Config" />
-          <Tab label="API Keys" />
-          <Tab label="Webhooks" />
-          <Tab label="GDPR / Privacy" />
+          {tabs.map((key) => (
+            <Tab key={key} label={TAB_LABELS[key]} />
+          ))}
         </Tabs>
       </Box>
 
+      {!isAdmin && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          You are a {user?.role?.replace('_', ' ')} in this company. Only
+          administrators can change its settings.
+        </Alert>
+      )}
+
+      {/* Companies */}
+      <TabPanel value={activeTab} index="companies">
+        <CompanyManager />
+      </TabPanel>
+
       {/* Organization */}
-      <TabPanel value={activeTab} index={0}>
+      <TabPanel value={activeTab} index="organization">
         <Card>
           <CardContent>
             <Typography variant="h6" className="mb-4">Organization</Typography>
@@ -180,7 +219,7 @@ export default function SettingsPage() {
       </TabPanel>
 
       {/* Profile */}
-      <TabPanel value={activeTab} index={1}>
+      <TabPanel value={activeTab} index="profile">
         <Card>
           <CardContent>
             <Typography variant="h6" className="mb-4">Your Profile</Typography>
@@ -230,12 +269,12 @@ export default function SettingsPage() {
       </TabPanel>
 
       {/* Pipelines */}
-      <TabPanel value={activeTab} index={2}>
+      <TabPanel value={activeTab} index="pipelines">
         <PipelineManager />
       </TabPanel>
 
       {/* Custom Fields */}
-      <TabPanel value={activeTab} index={3}>
+      <TabPanel value={activeTab} index="customFields">
         <Card>
           <CardContent>
             <CustomFieldBuilder />
@@ -244,22 +283,22 @@ export default function SettingsPage() {
       </TabPanel>
 
       {/* Email Config */}
-      <TabPanel value={activeTab} index={4}>
+      <TabPanel value={activeTab} index="emailConfig">
         <EmailConfigForm />
       </TabPanel>
 
       {/* API Keys */}
-      <TabPanel value={activeTab} index={5}>
+      <TabPanel value={activeTab} index="apiKeys">
         <ApiKeyManager />
       </TabPanel>
 
       {/* Webhooks */}
-      <TabPanel value={activeTab} index={6}>
+      <TabPanel value={activeTab} index="webhooks">
         <WebhookManager />
       </TabPanel>
 
       {/* GDPR / Privacy */}
-      <TabPanel value={activeTab} index={7}>
+      <TabPanel value={activeTab} index="gdpr">
         <GdprManager />
       </TabPanel>
     </div>

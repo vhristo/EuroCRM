@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "verify": "bash scripts/verify/multi-company.sh",
+    "verify:ui": "node scripts/verify/ui.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.13.1",

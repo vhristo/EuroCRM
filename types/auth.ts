@@ -18,6 +18,13 @@ export interface IRegisterRequest {
   organizationName: string
 }
 
+/** One organization the signed-in user belongs to, with their role in it. */
+export interface IOrganizationSummary {
+  id: string
+  name: string
+  role: string
+}
+
 export interface IAuthResponse {
   accessToken: string
   user: {
@@ -28,4 +35,5 @@ export interface IAuthResponse {
     role: string
     organizationId: string
   }
+  organizations: IOrganizationSummary[]
 }

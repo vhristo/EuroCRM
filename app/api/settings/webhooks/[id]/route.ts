@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireRole } from '@/lib/rbac'
 import { connectDB } from '@/lib/db'
 import { UpdateWebhookSchema } from '@/lib/validators/webhookSchema'
 import Webhook from '@/models/Webhook'
@@ -51,6 +52,11 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   const auth = await requireAuth(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // API keys and webhooks act with the whole organization's authority, so
+  // creating or changing them is an admin action.
+  const roleError = requireRole(auth, 'admin')
+  if (roleError) return roleError
+
   const body: unknown = await req.json()
   const parsed = UpdateWebhookSchema.safeParse(body)
   if (!parsed.success) {
@@ -89,6 +95,11 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 export async function DELETE(req: NextRequest, context: RouteContext) {
   const auth = await requireAuth(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // API keys and webhooks act with the whole organization's authority, so
+  // creating or changing them is an admin action.
+  const roleError = requireRole(auth, 'admin')
+  if (roleError) return roleError
 
   const { id } = await context.params
 

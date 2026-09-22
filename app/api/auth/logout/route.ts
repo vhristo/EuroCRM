@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
-import { hashToken } from '@/lib/auth'
+import { hashToken, verifyRefreshToken } from '@/lib/auth'
+import { clearRefreshCookie } from '@/lib/session'
 import User from '@/models/User'
 
 export async function POST(req: NextRequest) {
@@ -8,23 +9,21 @@ export async function POST(req: NextRequest) {
     const token = req.cookies.get('refreshToken')?.value
 
     if (token) {
-      await connectDB()
-      const tokenHash = await hashToken(token)
-      await User.updateOne(
-        { 'refreshTokens.tokenHash': tokenHash },
-        { $pull: { refreshTokens: { tokenHash } } }
-      )
+      const payload = verifyRefreshToken(token)
+      if (payload) {
+        await connectDB()
+        const tokenHash = await hashToken(token)
+        // Scoped by _id as well as hash — matching on the hash alone would be a
+        // cross-user write surface.
+        await User.updateOne(
+          { _id: payload.userId, 'refreshTokens.tokenHash': tokenHash },
+          { $pull: { refreshTokens: { tokenHash } } }
+        )
+      }
     }
 
     const response = NextResponse.json({ success: true })
-
-    response.cookies.set('refreshToken', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/api/auth',
-      maxAge: 0,
-    })
+    clearRefreshCookie(response)
 
     return response
   } catch (error: unknown) {

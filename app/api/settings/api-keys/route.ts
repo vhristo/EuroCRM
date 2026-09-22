@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireRole } from '@/lib/rbac'
 import { connectDB } from '@/lib/db'
 import { CreateApiKeySchema } from '@/lib/validators/apiKeySchema'
 import { hashApiKey } from '@/lib/apiKeyAuth'
@@ -43,6 +44,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // API keys and webhooks act with the whole organization's authority, so
+  // creating or changing them is an admin action.
+  const roleError = requireRole(auth, 'admin')
+  if (roleError) return roleError
 
   const body: unknown = await req.json()
   const parsed = CreateApiKeySchema.safeParse(body)

@@ -23,6 +23,8 @@ curl https://your-eurocrm.com/api/v1/contacts \
 
 API keys are created in Settings → API Keys by an admin. Each key has a set of explicit permissions. If a key lacks the required permission for an endpoint, the server returns HTTP 403.
 
+A key belongs to the organization that was active when it was created, and stays bound to it. Switching organizations in the web application has no effect on existing keys, and a key keeps working if the person who created it later leaves — keys are credentials of the organization, not of a user. Revoke them in Settings → API Keys.
+
 See [Settings](../features/settings.md#api-keys) for how to create and manage API keys.
 
 ---

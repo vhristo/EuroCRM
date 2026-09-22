@@ -25,7 +25,11 @@ export async function PUT(req: NextRequest) {
   const passwordParsed = ChangePasswordSchema.safeParse(body)
   if (passwordParsed.success) {
     await connectDB()
-    const user = await User.findOne({ _id: auth.userId, organizationId: auth.organizationId })
+    // Scoped by _id alone: auth.userId comes from a signature-verified token, and
+    // a user editing themselves is not an organization-scoped operation. Filtering
+    // by organization here would 404 for anyone whose active organization is not
+    // the one they first registered.
+    const user = await User.findOne({ _id: auth.userId })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const valid = await bcrypt.compare(passwordParsed.data.currentPassword, user.passwordHash)
@@ -44,7 +48,7 @@ export async function PUT(req: NextRequest) {
   await connectDB()
 
   const updated = await User.findOneAndUpdate(
-    { _id: auth.userId, organizationId: auth.organizationId },
+    { _id: auth.userId },
     { $set: parsed.data },
     { new: true }
   ).lean<Record<string, unknown>>()
@@ -56,6 +60,8 @@ export async function PUT(req: NextRequest) {
     email: updated.email,
     firstName: updated.firstName,
     lastName: updated.lastName,
-    role: updated.role,
+    // The role in the active organization, not the deprecated one on the user
+    // document — the settings page feeds this straight back into the admin gate.
+    role: auth.role,
   })
 }

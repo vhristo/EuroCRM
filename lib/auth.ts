@@ -22,7 +22,14 @@ export function signAccessToken(payload: AuthPayload): string {
 }
 
 export function signRefreshToken(payload: AuthPayload): string {
-  const opts: SignOptions = { expiresIn: JWT_REFRESH_EXPIRY as string & SignOptions['expiresIn'] }
+  const opts: SignOptions = {
+    expiresIn: JWT_REFRESH_EXPIRY as string & SignOptions['expiresIn'],
+    // A unique id per token. Without it, signing the same payload twice within
+    // one second yields a byte-identical token — `iat` has second resolution —
+    // so rotation would store the hash it just deleted and the superseded token
+    // would stay valid. Refresh tokens are stored by hash and must be single-use.
+    jwtid: crypto.randomUUID(),
+  }
   return jwt.sign({ ...payload }, JWT_REFRESH_SECRET, opts)
 }
 

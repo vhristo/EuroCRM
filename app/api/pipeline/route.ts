@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { connectDB } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import Pipeline from '@/models/Pipeline'
+import { seedOrganization } from '@/lib/orgBootstrap'
 import { DEFAULT_PIPELINE_STAGES } from '@/utils/constants'
 
 const CreatePipelineSchema = z.object({
@@ -19,24 +20,13 @@ export async function GET(req: NextRequest) {
     .sort({ isDefault: -1, createdAt: 1 })
     .lean()
 
-  // Auto-create default pipeline if none exist
+  // Fallback seeding for organizations created before seedOrganization existed.
+  // New organizations are seeded at creation time.
   if (pipelines.length === 0) {
-    const stages = DEFAULT_PIPELINE_STAGES.map((s) => ({
-      id: crypto.randomUUID(),
-      name: s.name,
-      order: s.order,
-      probability: s.probability,
-      rotDays: s.rotDays,
-    }))
-
-    const created = await Pipeline.create({
-      organizationId: auth.organizationId,
-      name: 'Sales Pipeline',
-      stages,
-      isDefault: true,
-    })
-
-    pipelines = [created.toObject()]
+    await seedOrganization(auth.organizationId)
+    pipelines = await Pipeline.find({ organizationId: auth.organizationId })
+      .sort({ isDefault: -1, createdAt: 1 })
+      .lean()
   }
 
   const result = pipelines.map((p: Record<string, unknown>) => ({

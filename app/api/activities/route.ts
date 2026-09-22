@@ -57,5 +57,18 @@ export async function POST(req: NextRequest) {
   }
 
   const activity = await Activity.create(data)
-  return NextResponse.json(activity.toObject(), { status: 201 })
+
+  const obj = activity.toObject() as Record<string, unknown>
+
+  const serializedActivity: Record<string, unknown> = {
+    ...obj,
+    id: (obj._id as { toString(): string }).toString(),
+    _id: undefined,
+    organizationId: auth.organizationId,
+    ownerId: auth.userId,
+    createdAt: (obj.createdAt as Date).toISOString(),
+    updatedAt: (obj.updatedAt as Date).toISOString(),
+  }
+
+  return NextResponse.json(serializedActivity, { status: 201 })
 }
